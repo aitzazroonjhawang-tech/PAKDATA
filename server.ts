@@ -175,7 +175,7 @@ You must output a JSON object obeying exactly this structure:
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "Gemini Real-Time Verification Engine" });
   } catch (error: any) {
-    console.error("Gemini Fact Check error:", error);
+    console.warn("Gemini Fact Check warning/info:", error.message || error);
     return res.json({ result: fallback, source: "PAKDATA Fallback Engine (API error or limit reached)" });
   }
 });
@@ -230,8 +230,8 @@ Return a JSON object:
 
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "PAKDATA AI News Summarizer" });
-  } catch (err) {
-    console.error("News summary error:", err);
+  } catch (err: any) {
+    console.warn("News summary warning/info:", err.message || err);
     return res.json({ result: fallbackSummary, source: "PAKDATA News Desk (Fallback)" });
   }
 });
@@ -372,8 +372,8 @@ Ensure the chartData contains 3 to 5 realistic items that represent the query (l
 
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "Gemini Data Synthesizer" });
-  } catch (error) {
-    console.error("Gemini Search error:", error);
+  } catch (error: any) {
+    console.warn("Gemini Search warning/info:", error.message || error);
     return res.json({ result: fallbackResponse, source: "PAKDATA Analytics Engine (Fallback)" });
   }
 });
@@ -455,8 +455,8 @@ You must return a JSON object with this EXACT structure:
 
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "Gemini Comparison Platform" });
-  } catch (error) {
-    console.error("Gemini Compare error:", error);
+  } catch (error: any) {
+    console.warn("Gemini Compare warning/info:", error.message || error);
     return res.json({ result: fallbackCompare, source: "PAKDATA Benchmarker (Fallback)" });
   }
 });
@@ -625,8 +625,8 @@ Return a JSON object:
 
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "Gemini Real-time Topic Analyzer" });
-  } catch (error) {
-    console.error(`Gemini Topics error (${topicName}):`, error);
+  } catch (error: any) {
+    console.warn(`Gemini Topics warning/info (${topicName}):`, error.message || error);
     return res.json({ result: selectedTopic, source: "PAKDATA Fallback Directory" });
   }
 });
@@ -1020,8 +1020,8 @@ You must return a JSON object structured exactly as:
 
     const parsed = JSON.parse(response.text || "{}");
     return res.json({ result: parsed, source: "Gemini Policy Reporter" });
-  } catch (error) {
-    console.error("Gemini article generation error:", error);
+  } catch (error: any) {
+    console.warn("Gemini article generation warning/info:", error.message || error);
     return res.json({ result: fallback, source: "PAKDATA Archivist Fallback" });
   }
 });

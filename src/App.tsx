@@ -27,6 +27,16 @@ import {
   Upload
 } from "lucide-react";
 import { StatItem, NewsItem, FactCheckResult, SearchResult, CompareResult, TopicDetails, ResearchItem } from "./types";
+import {
+  FALLBACK_STATS,
+  FALLBACK_NEWS,
+  FALLBACK_RESEARCH,
+  getFallbackTopicDetails,
+  getFallbackFactCheck,
+  getFallbackSearchInsights,
+  getFallbackCompare,
+  getFallbackSourceArticle
+} from "./dataFallback";
 
 interface SourceArticle {
   newspaperName: string;
@@ -299,15 +309,26 @@ export default function App() {
     setLoadingStats(true);
     try {
       const res = await fetch("/api/stats");
+      if (!res.ok) throw new Error("Endpoint returned non-ok");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Endpoint didn't return JSON");
+      }
       const data = await res.json();
-      if (data.stats) {
+      if (data.stats && Array.isArray(data.stats)) {
         setStats(data.stats);
         if (data.stats.length > 0 && !selectedStat) {
           setSelectedStat(data.stats[0]);
         }
+        return;
       }
+      throw new Error("Invalid format");
     } catch (e) {
-      console.error(e);
+      console.warn("Using local fallback data for statistics:", e);
+      setStats(FALLBACK_STATS);
+      if (FALLBACK_STATS.length > 0 && !selectedStat) {
+        setSelectedStat(FALLBACK_STATS[0]);
+      }
     } finally {
       setLoadingStats(false);
     }
@@ -318,15 +339,26 @@ export default function App() {
     setLoadingNews(true);
     try {
       const res = await fetch("/api/news");
+      if (!res.ok) throw new Error("Endpoint returned non-ok");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Endpoint didn't return JSON");
+      }
       const data = await res.json();
-      if (data.news) {
+      if (data.news && Array.isArray(data.news)) {
         setNewsList(data.news);
         if (data.news.length > 0 && !selectedNews) {
           setSelectedNews(data.news[0]);
         }
+        return;
       }
+      throw new Error("Invalid format");
     } catch (e) {
-      console.error(e);
+      console.warn("Using local fallback data for news:", e);
+      setNewsList(FALLBACK_NEWS);
+      if (FALLBACK_NEWS.length > 0 && !selectedNews) {
+        setSelectedNews(FALLBACK_NEWS[0]);
+      }
     } finally {
       setLoadingNews(false);
     }
@@ -337,15 +369,30 @@ export default function App() {
     setLoadingResearches(true);
     try {
       const res = await fetch("/api/researches");
-      const data = await res.json();
-      if (data.researches) {
-        setResearches(data.researches);
-        if (data.researches.length > 0 && !selectedResearch) {
-          setSelectedResearch(data.researches[0]);
-        }
+      if (!res.ok) throw new Error("Endpoint returned non-ok");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Endpoint didn't return JSON");
       }
+      const data = await res.json();
+      if (data.researches && Array.isArray(data.researches)) {
+        const localUploaded = JSON.parse(localStorage.getItem("local_researches") || "[]");
+        const merged = [...localUploaded, ...data.researches];
+        setResearches(merged);
+        if (merged.length > 0 && !selectedResearch) {
+          setSelectedResearch(merged[0]);
+        }
+        return;
+      }
+      throw new Error("Invalid format");
     } catch (e) {
-      console.error("Failed fetching researches:", e);
+      console.warn("Using local fallback data for researches:", e);
+      const localUploaded = JSON.parse(localStorage.getItem("local_researches") || "[]");
+      const merged = [...localUploaded, ...FALLBACK_RESEARCH];
+      setResearches(merged);
+      if (merged.length > 0 && !selectedResearch) {
+        setSelectedResearch(merged[0]);
+      }
     } finally {
       setLoadingResearches(false);
     }
@@ -356,12 +403,20 @@ export default function App() {
     setLoadingTopic(true);
     try {
       const res = await fetch(`/api/topics/${topic}`);
+      if (!res.ok) throw new Error("Endpoint returned non-ok");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Endpoint didn't return JSON");
+      }
       const data = await res.json();
       if (data.result) {
         setTopicDetails(data.result);
+        return;
       }
+      throw new Error("Invalid format");
     } catch (e) {
-      console.error(e);
+      console.warn(`Using local fallback details for topic "${topic}":`, e);
+      setTopicDetails(getFallbackTopicDetails(topic));
     } finally {
       setLoadingTopic(false);
     }
@@ -400,13 +455,23 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ claim: checkerClaim })
       });
+      if (!res.ok) throw new Error("Fact check endpoint failed");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Fact check didn't return JSON");
+      }
       const data = await res.json();
       if (data.result) {
         setCheckerResult(data.result);
         setCheckerSource(data.source || "PAKDATA Fact-Check");
+        return;
       }
+      throw new Error("Invalid format");
     } catch (err) {
-      console.error(err);
+      console.warn("Using local fallback for fact checker:", err);
+      const offlineResult = getFallbackFactCheck(checkerClaim);
+      setCheckerResult(offlineResult);
+      setCheckerSource("PAKDATA Offline Fact Assessor");
     } finally {
       setCheckerLoading(false);
     }
@@ -423,13 +488,23 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: queryToSearch })
       });
+      if (!res.ok) throw new Error("Search insights endpoint failed");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Search didn't return JSON");
+      }
       const data = await res.json();
       if (data.result) {
         setSearchResult(data.result);
         setSearchEngineSource(data.source || "Insight Engine");
+        return;
       }
+      throw new Error("Invalid format");
     } catch (err) {
-      console.error(err);
+      console.warn("Using local fallback for search insights:", err);
+      const offlineResult = getFallbackSearchInsights(queryToSearch);
+      setSearchResult(offlineResult);
+      setSearchEngineSource("PAKDATA Client-Side Analytics Library");
     } finally {
       setSearchLoading(false);
     }
@@ -455,12 +530,21 @@ export default function App() {
           metric: compareMetric
         })
       });
+      if (!res.ok) throw new Error("Compare endpoint failed");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Compare didn't return JSON");
+      }
       const data = await res.json();
       if (data.result) {
         setCompareResult(data.result);
+        return;
       }
+      throw new Error("Invalid format");
     } catch (err) {
-      console.error(err);
+      console.warn("Using local fallback for country comparisons:", err);
+      const offlineResult = getFallbackCompare(compareEntityA, compareEntityB, compareMetric);
+      setCompareResult(offlineResult);
     } finally {
       setCompareLoading(false);
     }
@@ -484,12 +568,28 @@ export default function App() {
           type: typeString || "Policy Review"
         })
       });
+      if (!res.ok) throw new Error("Article generation endpoint failed");
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Article response didn't return JSON");
+      }
       const data = await res.json();
       if (data.result) {
         setSourceArticle(data.result);
+        return;
       }
+      throw new Error("Invalid format");
     } catch (e) {
-      console.error("Error synthesizing source report", e);
+      console.warn("Using client-side fallback for source report synthesis:", e);
+      const offlineResult = getFallbackSourceArticle(
+        itemTitle,
+        itemDesc,
+        itemSource,
+        labelVal || "",
+        valueVal || "",
+        typeString || "Policy Review"
+      );
+      setSourceArticle(offlineResult);
     } finally {
       setLoadingArticle(false);
     }
@@ -559,6 +659,17 @@ export default function App() {
     }
     
     setUploadingResearch(true);
+    const newResearchObj: ResearchItem = {
+      id: `res-${Date.now()}`,
+      title: newTitle,
+      author: userEmail || "Anonymous Scholar",
+      summary: newSummary,
+      whatItMeans: newWhatItMeans,
+      pdfName: newPdfName || "thesis.pdf",
+      pdfData: newPdfData || "",
+      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long" })
+    };
+
     try {
       const res = await fetch("/api/researches", {
         method: "POST",
@@ -572,23 +683,41 @@ export default function App() {
           pdfData: newPdfData
         })
       });
-      const data = await res.json();
-      if (data.success) {
-        // Refresh live listings from server
-        await fetchResearches();
-        // Reset form variables
-        setNewTitle("");
-        setNewSummary("");
-        setNewWhatItMeans("");
-        setNewPdfName("");
-        setNewPdfData("");
-        setShowUploadModal(false);
-      } else {
-        alert("Failed to submit thesis. " + (data.error || ""));
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          // Refresh live listings from server
+          await fetchResearches();
+          // Reset form variables
+          setNewTitle("");
+          setNewSummary("");
+          setNewWhatItMeans("");
+          setNewPdfName("");
+          setNewPdfData("");
+          setShowUploadModal(false);
+          return;
+        }
       }
+      throw new Error("Endpoint didn't return valid successful JSON response");
     } catch (err) {
-      console.error("Submission error:", err);
-      alert("Network error occurred during thesis submission.");
+      console.warn("Using local state fallback for research submission (Active server not found):", err);
+      // Fallback: Store locally in localStorage
+      const localUploaded = JSON.parse(localStorage.getItem("local_researches") || "[]");
+      localUploaded.unshift(newResearchObj);
+      localStorage.setItem("local_researches", JSON.stringify(localUploaded));
+
+      // Append directly to active list
+      setResearches(prev => [newResearchObj, ...prev]);
+      setSelectedResearch(newResearchObj);
+
+      // Reset form variables
+      setNewTitle("");
+      setNewSummary("");
+      setNewWhatItMeans("");
+      setNewPdfName("");
+      setNewPdfData("");
+      setShowUploadModal(false);
     } finally {
       setUploadingResearch(false);
     }
