@@ -1,0 +1,6 @@
+{
+  "name": "PAKDATA",
+  "description": "Pakistan data + AI insights platform including live stats, AI checker, news summary, search/comparison, and specialized topic views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
